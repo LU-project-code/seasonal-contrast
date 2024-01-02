@@ -7,7 +7,7 @@ from torch import nn, optim
 from torchvision.models import resnet
 import pytorch_lightning as pl
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.metrics import Accuracy
+from torchmetrics import Accuracy
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from datasets.eurosat_datamodule import EurosatDataModule
@@ -21,7 +21,7 @@ class Classifier(LightningModule):
         self.encoder = backbone
         self.classifier = nn.Linear(in_features, num_classes)
         self.criterion = nn.CrossEntropyLoss()
-        self.accuracy = Accuracy()
+        self.accuracy = Accuracy(task='multiclass', num_classes=num_classes)
 
     def forward(self, x):
         with torch.no_grad():
@@ -65,6 +65,12 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt_path', type=str, default=None)
     args = parser.parse_args()
 
+    # argument values 
+    args.gpus = 0
+    args.data_dir = 'datasets/eurosat'
+    args.backbone_type = 'pretrain'
+    args.ckpt_path = 'pretrained-models/seco_resnet18_1m.ckpt'
+
     datamodule = EurosatDataModule(args.data_dir)
 
     if args.backbone_type == 'random':
@@ -84,5 +90,5 @@ if __name__ == '__main__':
 
     experiment_name = args.backbone_type
     logger = TensorBoardLogger(save_dir=str(Path.cwd() / 'logs' / 'eurosat'), name=experiment_name)
-    trainer = Trainer(gpus=args.gpus, logger=logger, checkpoint_callback=False, max_epochs=100, weights_summary='full')
+    trainer = Trainer(logger=logger, max_epochs=100)
     trainer.fit(model, datamodule=datamodule)
