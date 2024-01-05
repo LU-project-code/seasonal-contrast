@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from copy import deepcopy
 from argparse import ArgumentParser
@@ -58,6 +59,7 @@ class Classifier(LightningModule):
 
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"]=""
     pl.seed_everything(42)
 
     parser = ArgumentParser()
@@ -95,10 +97,11 @@ if __name__ == '__main__':
     trainer = Trainer(logger=logger, max_epochs=20)
     trainer.fit(model, datamodule=datamodule)
 
+
     outputs = trainer.predict(model, datamodule=datamodule)
-    logits = np.zeros([16200, 10])
-    feats = np.zeros([16200, 512])
-    cls = np.zeros(16200)
+    logits = np.zeros([5400, 10])
+    feats = np.zeros([5400, 512])
+    cls = np.zeros(5400)
     last_idx = 0
     for i in outputs:
         n_samples = i[0].shape[0]
@@ -107,11 +110,11 @@ if __name__ == '__main__':
 
         last_idx += n_samples
 
-    np.save('x_train.npy', feats)
-    np.save('x_logits.npy', logits)
+    np.save('x_val.npy', feats)
+    np.save('x_val_logits.npy', logits)
 
     for i, s in enumerate(datamodule.predict_dataset.samples):
         cls_name = s.stem.split('_')[0]
         cls[i] = datamodule.predict_dataset.class_to_idx[cls_name]
 
-    np.save('cls.npy', cls)
+    np.save('y_val.npy', cls)
