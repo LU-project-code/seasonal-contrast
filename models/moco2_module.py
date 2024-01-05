@@ -6,7 +6,7 @@ from torch import nn, optim
 import torch.nn.functional as F
 import torchvision
 from pytorch_lightning import LightningModule
-from pl_bolts.metrics import precision_at_k
+# from pl_bolts.metrics import precision_at_k
 
 
 class MocoV2(LightningModule):

@@ -13,6 +13,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from datasets.eurosat_datamodule import EurosatDataModule
 from models.moco2_module import MocoV2
 
+import numpy as np
+
 
 class Classifier(LightningModule):
 
@@ -27,7 +29,7 @@ class Classifier(LightningModule):
         with torch.no_grad():
             feats = self.encoder(x)
         logits = self.classifier(feats)
-        return logits
+        return logits, feats
 
     def training_step(self, batch, batch_idx):
         loss, acc = self.shared_step(batch)
@@ -43,7 +45,7 @@ class Classifier(LightningModule):
 
     def shared_step(self, batch):
         x, y = batch
-        logits = self(x)
+        logits, _ = self(x)
         loss = self.criterion(logits, y)
         acc = self.accuracy(torch.argmax(logits, dim=1), y)
         return loss, acc
@@ -90,5 +92,26 @@ if __name__ == '__main__':
 
     experiment_name = args.backbone_type
     logger = TensorBoardLogger(save_dir=str(Path.cwd() / 'logs' / 'eurosat'), name=experiment_name)
-    trainer = Trainer(logger=logger, max_epochs=100)
+    trainer = Trainer(logger=logger, max_epochs=20)
     trainer.fit(model, datamodule=datamodule)
+
+    outputs = trainer.predict(model, datamodule=datamodule)
+    logits = np.zeros([16200, 10])
+    feats = np.zeros([16200, 512])
+    cls = np.zeros(16200)
+    last_idx = 0
+    for i in outputs:
+        n_samples = i[0].shape[0]
+        logits[last_idx:(last_idx + n_samples), :] = i[0]
+        feats[last_idx:(last_idx + n_samples), :] = i[1]
+
+        last_idx += n_samples
+
+    np.save('x_train.npy', feats)
+    np.save('x_logits.npy', logits)
+
+    for i, s in enumerate(datamodule.predict_dataset.samples):
+        cls_name = s.stem.split('_')[0]
+        cls[i] = datamodule.predict_dataset.class_to_idx[cls_name]
+
+    np.save('cls.npy', cls)
